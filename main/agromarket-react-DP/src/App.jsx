@@ -1,27 +1,23 @@
-import ProductCard from "./components/ProductCard";
+
 import { useState, useEffect } from "react";
 import "./App.css";
-import LoginForm from "./components/LoginForm.jsx";
-import AddProductForm from "./components/AddProductForm.jsx"; // создадим в шаге 6.4
-import { API_URL, apiFetch } from "./api.js";
 
+import ProductCard from "./components/ProductCard";
+import LoginForm from "./components/LoginForm.jsx";
+import AddProductForm from "./components/AddProductForm.jsx";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ContactForm from "./components/ContactForm";
+import { apiFetch } from "./api.js";
 
 function App() {
-  const testProduct = {
-    id: 1,
-    name: "Тест",
-    price: 100,
-    image: "https://placehold.co/300x200",
-  };
-
-  let hasError = false;
-
   const [user, setUser] = useState(() =>
     JSON.parse(localStorage.getItem("user") || "null"),
   );
+
+  const [products, setProducts] = useState([]);
+  const [cartCount, setCartCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
 
   function handleLogin(user, token) {
     localStorage.setItem("token", token);
@@ -35,44 +31,37 @@ function App() {
     setUser(null);
   }
 
-  const [products, setProducts] = useState([]);
-  const [cartCount, setCartCount] = useState(0);
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const API_URL = "http://localhost:3000/api";
-
   useEffect(() => {
     async function loadProducts() {
       try {
-        const response = await fetch(`${API_URL}/products`);
-        const result = await response.json();
-        setProducts(result);
-        renderProducts(products);
+        const result = await apiFetch("/products");
+        setProducts(Array.isArray(result) ? result : result.products ?? []);
       } catch (error) {
-        hasError = !hasError;
+        console.error("Не удалось загрузить товары:", error);
       }
     }
 
     loadProducts();
   }, []);
 
+  useEffect(() => {
+    if (!localStorage.getItem("token")) return;
+
+    apiFetch("/auth/me")
+      .then((currentUser) => {
+        setUser(currentUser);
+        localStorage.setItem("user", JSON.stringify(currentUser));
+      })
+      .catch(() => {});
+  }, []);
+
   const handleAddToCart = () => {
-    setCartCount(cartCount + 1);
+    setCartCount((count) => count + 1);
   };
 
   const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()),
+    product.name?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
-
-  useEffect(() => {
-    if (!localStorage.getItem("token")) return; // не входили — проверять нечего
-    apiFetch('/auth/me')
-      .then((user) => setUser(user))
-      .catch(() => {});
-    // ЗАДАНИЕ: вызовите apiFetch('/auth/me') и положите результат в setUser.
-    // ЗАДАНИЕ: ошибку перехватите пустым .catch(() => {}) —
-    // ЗАДАНИЕ: при 401 apiFetch сам выполнит выход
-  }, []);
 
   return (
     <>
@@ -94,7 +83,11 @@ function App() {
 
         <main className="page">
           {user?.role === "admin" && (
-            <AddProductForm onAdded={(p) => setProducts([...products, p])} />
+            <AddProductForm
+              onAdded={(product) =>
+                setProducts((current) => [...current, product])
+              }
+            />
           )}
 
           <section id="catalog" className="catalog">
@@ -105,20 +98,22 @@ function App() {
                 type="search"
                 placeholder="Поиск товара..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(event) => setSearchTerm(event.target.value)}
               />
             </div>
+
             <div className="product-grid">
               {filteredProducts.map((product) => (
                 <ProductCard
                   onAdd={handleAddToCart}
                   key={product.id}
                   product={product}
-                  featured={product.id === "1"}
+                  featured={String(product.id) === "1"}
                 />
               ))}
             </div>
           </section>
+
           <aside id="delivery" className="sidebar">
             <h3>Доставка</h3>
             <ul>
@@ -127,11 +122,13 @@ function App() {
               <li>Бесплатно от 20 000 тг</li>
             </ul>
           </aside>
+
           <section id="contact">
             <ContactForm />
           </section>
         </main>
       </div>
+
       <Footer />
     </>
   );

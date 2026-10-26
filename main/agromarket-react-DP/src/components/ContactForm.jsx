@@ -1,27 +1,23 @@
+
+import { apiFetch } from "../api.js";
+
 function ContactForm() {
-  const API_URL = "http://localhost:3000/api";
-  async function handleSubmit(e) {
-    e.preventDefault();
-    const form = e.target; // не перезагружать страницу
-    const data = Object.fromEntries(new FormData(form)); // очистить поля
-    console.log(data)
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const data = Object.fromEntries(new FormData(form));
+
     try {
-      const res = await fetch(`${API_URL}/orders`, {
+      const result = await apiFetch("/orders", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      const result = await res.json();
-      if (!res.ok) {
-        // статус не 2xx (например, 400)
-        alert("Ошибка: " + result.error);
-        return;
-      }
+
       alert(`Заявка №${result.id} принята!`);
       form.reset();
-    } catch (err) {
-      // сервер выключен или недоступен
-      alert("Сервер недоступен. Запущен ли agromarket-server?");
+    } catch (error) {
+      alert(`Не удалось отправить заявку: ${error.message}`);
     }
   }
 
@@ -42,12 +38,26 @@ function ContactForm() {
           placeholder="farmer@mail.kz"
         />
 
-        {/* ЗАДАНИЕ: поле телефона — type="tel", placeholder "+7 7XX XXX XX XX" */}
-        <input type="tel" placeholder="+7 7XX XXX XX XX" name="phone" id="" />
-        {/* ЗАДАНИЕ: объём заказа в кг — type="number", min="10", required */}
-        <input type="number" min="10" required name="quantity" id="" />
-        {/* ЗАДАНИЕ: желаемая дата доставки — type="date" */}
-        <input type="date" name="date"/>
+        <label htmlFor="phone">Телефон</label>
+        <input
+          id="phone"
+          name="phone"
+          type="tel"
+          placeholder="+7 7XX XXX XX XX"
+        />
+
+        <label htmlFor="quantity">Объём заказа, кг</label>
+        <input
+          id="quantity"
+          name="quantity"
+          type="number"
+          min="10"
+          required
+        />
+
+        <label htmlFor="date">Желаемая дата доставки</label>
+        <input id="date" name="date" type="date" />
+
         <label htmlFor="comment">Комментарий</label>
         <textarea id="comment" name="comment" rows="4" />
 
